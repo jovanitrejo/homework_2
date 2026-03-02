@@ -1,0 +1,18 @@
+Average latency results via calling /list and /register ten times on each node
+======
+Instance (us-central1) - IP: 34.63.169.199
+  /register: 10 samples | avg = 92.44 ms
+  /list:     10 samples | avg = 93.08 ms
+
+Instance (europe-west1) - IP: 35.205.122.149
+  /register: 10 samples | avg = 348.12 ms
+  /list:     10 samples | avg = 348.73 ms
+
+Results from eventual consistency experiment
+======
+Not found immediately (misses): 0 / 100
+Request/processing errors:      0 / 100
+
+The latency difference occurs due to network distance and where the datastore is physically located. Since our Firestore database is in the us-central1 region, calls that are handled by the europe-west1 VM have a longer network path to access data from the firestore database (i.e., needs to request data all the way from the EU to the US). This explans the extra 200ms average delay when calling via the EU node. Similarly, the US node lies in the same region as the firestore database, meaning there is in general a shorter network path the node has to request to get the same data. This explains the latency difference between the two nodes.
+
+Our consistency experiment surprisingly showed us zero misses, which I have found initially confusing since the idea of an eventual consistency model is that stale data should be returned even if the latest data isn't yet visible on all nodes. Thinking about this further, our node server.js code requires that we await a response confirming the save in the firestore database, which means the write has already been committed when the client then proceeds to read the data from the database via the EU node. Additionally, the /list request itself has non-trivial latency when a US client (my computer) contacts an EU server, which provides enough time for the managed replication/visibility to complete before the response is returned. Overall, the experiment suggests that under light load in this setup, replication lag is negligible or difficult to observe with a simple immediate read after write test. It is possible however, that at a larger scale with bigger writes and reads, that these misses are more likely to occur.
