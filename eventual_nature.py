@@ -12,11 +12,11 @@ ITERATIONS = 100
 CONNECT_TIMEOUT = 5
 READ_TIMEOUT = 15
 
-
+# uses uuid to create a unique username to add to the database
 def unique_username() -> str:
     return f"user-{uuid.uuid4().hex}"
 
-
+# Takes an incoming response and processes data into a python object
 def extract_user_list(response: requests.Response) -> list[str]:
     data = response.json()
     if isinstance(data, dict) and isinstance(data.get("users"), list):
@@ -35,11 +35,12 @@ def main():
     print(f"Listing from EU:   {LIST_URL}")
     print(f"Iterations: {ITERATIONS}\n")
 
+    # Registers a username via US server then immediately reads firestore database via EU server. 
     for i in range(ITERATIONS):
         username = unique_username()
 
         try:
-            # Register on US
+            # Register unique username on US server
             r_reg = requests.post(
                 REGISTER_URL,
                 json={"username": username},
@@ -47,7 +48,7 @@ def main():
             )
             print(f"added {username} to US server")
 
-            # Immediately get list from EU node
+            # Immediately get list from EU server
             r_list = requests.get(
                 LIST_URL,
                 timeout=(CONNECT_TIMEOUT, READ_TIMEOUT),
@@ -57,15 +58,12 @@ def main():
             print(f"Read {users} from EU server")
             found = username in users
             if not found:
-                misses += 1
-
-            if (i + 1) % 10 == 0:
-                print(f"Progress {i+1}/{ITERATIONS} | misses: {misses} | errors: {errors}")
-
+                misses += 1 # register the miss
         except Exception as e:
-            errors += 1
+            errors += 1 # register the error
             print(f"Iteration {i+1}: ERROR - {type(e).__name__}: {e}")
 
+    # Print results
     print("\nResults")
     print(f"Not found immediately (misses): {misses} / {ITERATIONS}")
     print(f"Request/processing errors:      {errors} / {ITERATIONS}")

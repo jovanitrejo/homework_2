@@ -31,6 +31,7 @@ for ip in ip_addresses:
         }
     print()
 
+# Test /list endpoint 10x for both IPs
 for ip in ip_addresses:
     url = f"http://{ip}:8080/list"
     times = []
@@ -49,10 +50,12 @@ for ip in ip_addresses:
     if times:
         results[f"{ip}_list"] = {
             "times": times,        }
-    
+
+# compute averages as a helper function  
 def avg_ms(values):
     return sum(values) / len(values) if values else None
 
+# Computes and display averages
 print("\nAverage Latency Results")
 
 for ip in ip_addresses:
